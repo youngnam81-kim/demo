@@ -23,7 +23,6 @@ public class UserController {
     
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
-    	System.out.println("로그인 요청 옴.");
         LoginResponseDto response = userService.login(loginRequestDto);
         return ResponseEntity.ok(response);
     }
