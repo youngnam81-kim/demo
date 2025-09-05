@@ -1,5 +1,7 @@
 package com.vue_project.demo.service; // 패키지 변경
 
+import java.util.Optional;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -37,5 +39,10 @@ public class UserService {
         }
         userRepository.save(user);
         return true;
+    }
+    
+ // 아이디로 사용자 조회
+    public Optional<User> findByUserId(String userId) {
+        return userRepository.findByUserId(userId);
     }
 }
