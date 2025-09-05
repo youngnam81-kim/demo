@@ -3,10 +3,12 @@ package com.vue_project.demo.service; // 패키지 변경
 import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.vue_project.demo.dto.LoginRequestDto; // 임포트 변경
 import com.vue_project.demo.dto.LoginResponseDto; // 임포트 변경
+import com.vue_project.demo.dto.UserRequestDto;
 import com.vue_project.demo.entity.User; // 임포트 변경
 import com.vue_project.demo.repository.UserRepository; // 임포트 변경
 
@@ -15,6 +17,7 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    private PasswordEncoder passwordEncoder;
     
     public LoginResponseDto login(LoginRequestDto loginRequestDto) {
         return userRepository.findByUserId(loginRequestDto.getUserId())
@@ -33,16 +36,24 @@ public class UserService {
                         .build());
     }
     
-    public boolean register(User user) {
-        if (userRepository.existsByUserId(user.getUserId())) {
-            return false;
-        }
-        userRepository.save(user);
-        return true;
+    public User insertUser(UserRequestDto userRequestDto) {
+        User user = User.builder()
+                .userId(userRequestDto.getUserId())
+                .userName(userRequestDto.getUserName())
+                .password(passwordEncoder.encode(userRequestDto.getPassword())) // 비밀번호 암호화
+                .auth("USER") // 기본 권한 설정
+                .build();
+        
+        return userRepository.save(user);
     }
     
  // 아이디로 사용자 조회
     public Optional<User> findByUserId(String userId) {
         return userRepository.findByUserId(userId);
     }
+    
+    public boolean existByUserId(String userId) {
+        return userRepository.existsByUserId(userId);
+    }
+    
 }

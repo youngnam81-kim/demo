@@ -1,39 +1,84 @@
 package com.vue_project.demo.controller; // 패키지 변경
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.vue_project.demo.dto.LoginRequestDto; // 임포트 변경
-import com.vue_project.demo.dto.LoginResponseDto; // 임포트 변경
-import com.vue_project.demo.entity.User; // 임포트 변경
-import com.vue_project.demo.service.UserService; // 임포트 변경
+import com.vue_project.demo.config.JwtTokenProvider;
+import com.vue_project.demo.dto.LoginRequestDto;
+import com.vue_project.demo.dto.LoginResponseDto;
+import com.vue_project.demo.dto.UserRequestDto;
+import com.vue_project.demo.entity.User;
+import com.vue_project.demo.service.UserService;
 
 @RestController
 @RequestMapping("/api/users")
-//@CrossOrigin(origins = "http://localhost:5173", allowedHeaders = "*", allowCredentials = "true")
 public class UserController {
 
-    @Autowired
-    private UserService userService;
-    
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponseDto> login(@RequestBody LoginRequestDto loginRequestDto) {
-        LoginResponseDto response = userService.login(loginRequestDto);
-        return ResponseEntity.ok(response);
-    }
-    
-    @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody User user) {
-        boolean isRegistered = userService.register(user);
-        if (isRegistered) {
-            return ResponseEntity.ok().body("회원가입 성공");
-        } else {
-            return ResponseEntity.badRequest().body("이미 존재하는 아이디입니다.");
-        }
-    }
+	private final UserService userService;
+	private final JwtTokenProvider jwtTokenProvider;
+	private PasswordEncoder passwordEncoder;
+
+	@Autowired
+	public UserController(UserService userService, JwtTokenProvider jwtTokenProvider, PasswordEncoder passwordEncoder) {
+		this.userService = userService;
+		this.jwtTokenProvider = jwtTokenProvider;
+		this.passwordEncoder = passwordEncoder;
+	}
+
+	@PostMapping("/login")
+	public ResponseEntity<?> login(@RequestBody LoginRequestDto loginRequestDto) {
+		// 사용자 찾기
+		User user = userService.findByUserId(loginRequestDto.getUserId())
+				.orElseThrow(() -> new IllegalArgumentException("가입되지 않은 아이디입니다."));
+		// 비밀번호 검증
+		if (!passwordEncoder.matches(loginRequestDto.getPassword(), user.getPassword())) {
+			throw new IllegalArgumentException("잘못된 비밀번호입니다.");
+		}
+
+		// 권한 정보 설정
+		List<String> roles = new ArrayList<>();
+		roles.add(user.getAuth());
+
+		// JWT 토큰 생성
+		String token = jwtTokenProvider.createToken(user.getUserId(), roles);
+
+		// 응답 데이터 구성 (토큰과 사용자 정보 모두 반환)
+		Map<String, Object> response = new HashMap<>();
+		response.put("token", token);
+		response.put("user", LoginResponseDto.builder().id(user.getId()).userId(user.getUserId())
+				.userName(user.getUserName()).auth(user.getAuth()).success(true).message("로그인 성공").build());
+
+		return ResponseEntity.ok(response);
+	}
+
+	@PostMapping("/signup")
+	public ResponseEntity<?> insertUser(@RequestBody UserRequestDto userRequestDto) {
+		try {
+			if (userRequestDto.getUserId() == null || userRequestDto.getPassword() == null) {
+				return ResponseEntity.badRequest().body("아이디와 비밀번호는 필수 항목 입니다.");
+			}
+			if (userService.existByUserId(userRequestDto.getUserId())) {
+				return ResponseEntity.badRequest().body("이미 사용중인 아이디입니다.");
+			}
+
+			userService.insertUser(userRequestDto);
+
+			return ResponseEntity.status(HttpStatus.CREATED).body(userRequestDto);
+		} catch (Exception e) {
+			return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+					.body("회원가입 처리 중 오류가 발생했습니다. : " + e.getMessage());
+		}
+	}
+
 }
