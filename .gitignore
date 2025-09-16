@@ -9,6 +9,7 @@ target/
 .classpath
 .factorypath
 .project
+.properties
 .settings
 .springBeans
 .sts4-cache
@@ -32,4 +33,9 @@ build/
 ### VS Code ###
 .vscode/
 
+### wallet ###
 src/main/resources/wallet/
+
+### Application properties ###
+application.properties
+application-prod.properties
