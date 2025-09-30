@@ -21,7 +21,7 @@ import lombok.Setter;
 @Entity
 @Getter // Lombok: Getter 자동 생성
 @Setter // Lombok: Setter 자동 생성
-@Table(name = "TB_USER")
+@Table(name = "API_USER")
 public class User {
     
     @Id
